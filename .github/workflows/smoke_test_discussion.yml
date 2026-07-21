@@ -1,0 +1,31 @@
+name: Smoke test - GITHUB_TOKEN discussions:write
+
+on:
+  workflow_dispatch:
+
+permissions:
+  discussions: write
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create a throwaway test discussion
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api graphql -f query='
+          mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+            createDiscussion(input: {
+              repositoryId: $repositoryId,
+              categoryId: $categoryId,
+              title: $title,
+              body: $body
+            }) {
+              discussion { id url }
+            }
+          }' \
+            -f repositoryId="R_kgDOTNgHyw" \
+            -f categoryId="DIC_kwDOTNgHy84DAe9x" \
+            -f title="[smoke test] GITHUB_TOKEN discussions:write check (safe to delete)" \
+            -f body="Created by CI to verify that the default GITHUB_TOKEN can create Discussions. Safe to delete."
