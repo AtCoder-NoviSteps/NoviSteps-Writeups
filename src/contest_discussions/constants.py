@@ -12,6 +12,6 @@ GENERAL_CATEGORY_ID = "DIC_kwDOTNgHy84DAe9x"
 
 DISCUSSION_BODY = "問題の感想や気づきを投稿・共有するスペースです"
 
-# 週次 cron が1回失敗しても次回実行で埋め合わせられるよう、直近何件のABCを
-# 重複チェック対象にするか。3件あれば3週分の取りこぼしまでカバーできる。
+# How many recent ABCs to check for missing discussions. Covers up to 3 missed
+# weekly cron runs in a row, so a single transient failure self-heals next run.
 CONTESTS_TO_CHECK = 3
