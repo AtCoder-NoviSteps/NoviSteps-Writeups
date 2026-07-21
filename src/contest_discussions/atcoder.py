@@ -15,12 +15,16 @@ def fetch_tasks(contest_id: str) -> list[dict[str, str]]:
 
     Returns a list of dicts with keys: id, contest_id, problem_index, name.
     Raises ValueError if the task table cannot be found on the page.
+    Network/HTTP failures propagate as requests.RequestException (e.g.
+    requests.HTTPError, requests.Timeout) — callers should catch that.
     """
     url = f"https://atcoder.jp/contests/{contest_id}/tasks"
     response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
 
-    tree = HTMLParser(response.text)
+    # Parse from bytes so selectolax's own charset sniffing applies, instead of
+    # trusting requests' Content-Type-derived (and sometimes absent) encoding.
+    tree = HTMLParser(response.content)
     tbody = tree.css_first("tbody")
 
     if tbody is None:
@@ -29,7 +33,7 @@ def fetch_tasks(contest_id: str) -> list[dict[str, str]]:
     tasks = []
 
     for row in tbody.css("tr"):
-        task = _parse_row(row)
+        task = _parse_row(row, contest_id)
 
         if task is not None:
             tasks.append(task)
@@ -37,7 +41,7 @@ def fetch_tasks(contest_id: str) -> list[dict[str, str]]:
     return tasks
 
 
-def _parse_row(row) -> dict[str, str] | None:
+def _parse_row(row, contest_id: str) -> dict[str, str] | None:
     cells = row.css("td")
 
     if len(cells) < 2:
@@ -53,8 +57,12 @@ def _parse_row(row) -> dict[str, str] | None:
     if match is None:
         return None
 
-    contest_id, task_id = match.groups()
-    problem_index = cells[0].text(strip=True)
+    href_contest_id, task_id = match.groups()
+
+    if href_contest_id != contest_id:
+        return None
+
+    problem_index = link.text(strip=True)
     name = cells[1].text(strip=True)
 
     if not problem_index or not name:
