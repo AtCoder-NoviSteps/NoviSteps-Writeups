@@ -1,8 +1,10 @@
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import responses
 
-from contest_discussions.atcoder import fetch_tasks
+from contest_discussions.atcoder import fetch_tasks, find_recently_finished_abc_ids
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -67,3 +69,27 @@ def test_fetch_tasks_skips_malformed_rows():
 
     assert len(tasks) == 1
     assert tasks[0]["problem_index"] == "A"
+
+
+@responses.activate
+def test_find_recently_finished_abc_ids_returns_oldest_first():
+    contests = json.loads((FIXTURES_DIR / "contests_sample.json").read_text(encoding="utf-8"))
+    responses.get("https://kenkoooo.com/atcoder/resources/contests.json", json=contests)
+
+    now = datetime(2026, 7, 21, tzinfo=timezone.utc)
+    result = find_recently_finished_abc_ids(now=now, limit=3)
+
+    # abc468 is in the future, arc199 is not an ABC -> excluded.
+    # Among the finished ABCs (465, 466, 467), the 3 most recent, oldest first.
+    assert result == ["abc465", "abc466", "abc467"]
+
+
+@responses.activate
+def test_find_recently_finished_abc_ids_respects_limit():
+    contests = json.loads((FIXTURES_DIR / "contests_sample.json").read_text(encoding="utf-8"))
+    responses.get("https://kenkoooo.com/atcoder/resources/contests.json", json=contests)
+
+    now = datetime(2026, 7, 21, tzinfo=timezone.utc)
+    result = find_recently_finished_abc_ids(now=now, limit=1)
+
+    assert result == ["abc467"]

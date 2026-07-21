@@ -1,13 +1,17 @@
 """Fetches contest/task metadata directly from the AtCoder website."""
 
 import re
+from datetime import datetime, timezone
 
 import requests
 from selectolax.parser import HTMLParser
 
 REQUEST_TIMEOUT_SECONDS = 10
 
+CONTESTS_JSON_URL = "https://kenkoooo.com/atcoder/resources/contests.json"
+
 _TASK_HREF_PATTERN = re.compile(r"^/contests/([^/]+)/tasks/([^/]+)$")
+_ABC_ID_PATTERN = re.compile(r"^abc\d{3}$")
 
 
 def fetch_tasks(contest_id: str) -> list[dict[str, str]]:
@@ -74,3 +78,30 @@ def _parse_row(row, contest_id: str) -> dict[str, str] | None:
         "problem_index": problem_index,
         "name": name,
     }
+
+
+def find_recently_finished_abc_ids(
+    now: datetime | None = None, limit: int = 3
+) -> list[str]:
+    """Returns up to `limit` most recently finished ABC contest_ids, oldest first.
+
+    Network/HTTP failures propagate as requests.RequestException (e.g.
+    requests.HTTPError, requests.Timeout) — callers should catch that.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+
+    response = requests.get(CONTESTS_JSON_URL, timeout=REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    contests = response.json()
+
+    now_epoch = now.timestamp()
+    finished_abc = [
+        contest
+        for contest in contests
+        if _ABC_ID_PATTERN.match(contest["id"])
+        and contest["start_epoch_second"] + contest["duration_second"] <= now_epoch
+    ]
+    finished_abc.sort(key=lambda contest: contest["start_epoch_second"])
+
+    return [contest["id"] for contest in finished_abc[-limit:]]
