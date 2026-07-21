@@ -1,4 +1,6 @@
-"""Fetches contest/task metadata directly from the AtCoder website."""
+"""Fetches contest schedule metadata from the AtCoder Problems API and
+per-contest task lists directly from the AtCoder website.
+"""
 
 import re
 from datetime import datetime, timezone
@@ -85,8 +87,11 @@ def find_recently_finished_abc_ids(
 ) -> list[str]:
     """Returns up to `limit` most recently finished ABC contest_ids, oldest first.
 
+    `now` must be timezone-aware (defaults to the current UTC time).
     Network/HTTP failures propagate as requests.RequestException (e.g.
     requests.HTTPError, requests.Timeout) — callers should catch that.
+    Assumes well-formed contests.json entries; a missing "id"/"start_epoch_second"/
+    "duration_second" key raises KeyError.
     """
     if now is None:
         now = datetime.now(timezone.utc)
@@ -103,5 +108,8 @@ def find_recently_finished_abc_ids(
         and contest["start_epoch_second"] + contest["duration_second"] <= now_epoch
     ]
     finished_abc.sort(key=lambda contest: contest["start_epoch_second"])
+
+    if limit <= 0:
+        return []
 
     return [contest["id"] for contest in finished_abc[-limit:]]

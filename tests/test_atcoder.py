@@ -93,3 +93,14 @@ def test_find_recently_finished_abc_ids_respects_limit():
     result = find_recently_finished_abc_ids(now=now, limit=1)
 
     assert result == ["abc467"]
+
+
+@responses.activate
+def test_find_recently_finished_abc_ids_returns_empty_for_zero_limit():
+    contests = json.loads((FIXTURES_DIR / "contests_sample.json").read_text(encoding="utf-8"))
+    responses.get("https://kenkoooo.com/atcoder/resources/contests.json", json=contests)
+
+    now = datetime(2026, 7, 21, tzinfo=timezone.utc)
+    result = find_recently_finished_abc_ids(now=now, limit=0)
+
+    assert result == []
