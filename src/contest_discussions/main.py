@@ -2,11 +2,13 @@
 for any problems that don't have one yet."""
 
 import argparse
+import logging
 import os
-import sys
 
 from contest_discussions import atcoder, github_client
 from contest_discussions.constants import CONTESTS_TO_CHECK, DISCUSSION_BODY
+
+logger = logging.getLogger(__name__)
 
 
 def build_title(contest_id: str, task: dict) -> str:
@@ -35,8 +37,8 @@ def run(token: str, contest_id: str | None = None) -> None:
     for cid in contest_ids:
         try:
             tasks = atcoder.fetch_tasks(cid)
-        except Exception as error:
-            print(f"Failed to fetch tasks for {cid}: {error}", file=sys.stderr)
+        except Exception:
+            logger.exception("Failed to fetch tasks for %s", cid)
             continue
 
         for task in tasks:
@@ -47,11 +49,8 @@ def run(token: str, contest_id: str | None = None) -> None:
 
             try:
                 url = github_client.create_discussion(token, title, DISCUSSION_BODY)
-            except Exception as error:
-                print(
-                    f"Failed to create discussion for '{title}': {error}",
-                    file=sys.stderr,
-                )
+            except Exception:
+                logger.exception("Failed to create discussion for '%s'", title)
                 continue
 
             print(f"Created: {url}")
@@ -59,6 +58,8 @@ def run(token: str, contest_id: str | None = None) -> None:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
     parser = argparse.ArgumentParser(
         description="Post ABC contest discussions to NoviSteps-Writeups."
     )

@@ -1,3 +1,5 @@
+import pytest
+
 from contest_discussions import main
 
 
@@ -106,3 +108,62 @@ def test_run_uses_explicit_contest_id_when_given(monkeypatch):
     main.run("fake-token", contest_id="abc468")
 
     assert called_with == ["abc468"]
+
+
+def test_run_skips_duplicate_title_within_the_same_run(monkeypatch):
+    # A task appearing twice in one contest's fetch (e.g. a page glitch) must
+    # only produce one Discussion — the second attempt should see the title
+    # already added to existing_titles by the first successful creation.
+    duplicated_task = {
+        "id": "abc467_a",
+        "contest_id": "abc467",
+        "problem_index": "A",
+        "name": "Obesity",
+    }
+    monkeypatch.setattr(
+        main.atcoder, "find_recently_finished_abc_ids", lambda limit: ["abc467"]
+    )
+    monkeypatch.setattr(
+        main.atcoder,
+        "fetch_tasks",
+        lambda contest_id: [duplicated_task, duplicated_task],
+    )
+    monkeypatch.setattr(main.github_client, "existing_discussion_titles", lambda token: set())
+
+    call_count = 0
+
+    def fake_create_discussion(token, title, body):
+        nonlocal call_count
+        call_count += 1
+        return "https://example.invalid"
+
+    monkeypatch.setattr(main.github_client, "create_discussion", fake_create_discussion)
+
+    main.run("fake-token")
+
+    assert call_count == 1
+
+
+def test_main_exits_when_github_token_missing(monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr("sys.argv", ["main.py"])
+
+    with pytest.raises(SystemExit):
+        main.main()
+
+
+def test_main_passes_token_and_contest_id_to_run(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "env-token")
+    monkeypatch.setattr("sys.argv", ["main.py", "--contest-id", "abc999"])
+
+    captured = {}
+
+    def fake_run(token, contest_id=None):
+        captured["token"] = token
+        captured["contest_id"] = contest_id
+
+    monkeypatch.setattr(main, "run", fake_run)
+
+    main.main()
+
+    assert captured == {"token": "env-token", "contest_id": "abc999"}
