@@ -91,6 +91,23 @@ def test_run_continues_after_a_single_contest_fetch_failure(monkeypatch):
     assert created == ["ABC 467 A - Obesity"]
 
 
+def test_run_raises_when_every_contest_fails_to_fetch(monkeypatch):
+    # A systemic failure (e.g. AtCoder page structure changed) must surface
+    # as a failed run, not a silent no-op success.
+    monkeypatch.setattr(
+        main.atcoder, "find_recently_finished_abc_ids", lambda limit: ["abc466", "abc467"]
+    )
+
+    def always_fails(contest_id):
+        raise ValueError("no task table")
+
+    monkeypatch.setattr(main.atcoder, "fetch_tasks", always_fails)
+    monkeypatch.setattr(main.github_client, "existing_discussion_titles", lambda token: set())
+
+    with pytest.raises(RuntimeError):
+        main.run("fake-token")
+
+
 def test_run_uses_explicit_contest_id_when_given(monkeypatch):
     called_with = []
     monkeypatch.setattr(

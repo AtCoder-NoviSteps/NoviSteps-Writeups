@@ -21,6 +21,10 @@ def run(token: str, contest_id: str | None = None) -> None:
 
     Per-contest fetch failures and per-task creation failures are caught and
     logged, not raised — one bad contest or task must not stop the others.
+    Raises RuntimeError if every attempted contest failed to fetch, since that
+    points to a systemic issue (e.g. AtCoder page structure changed) rather
+    than a one-off, and must surface as a failed run instead of a silent
+    no-op success.
     """
     contest_ids = (
         [contest_id]
@@ -34,11 +38,14 @@ def run(token: str, contest_id: str | None = None) -> None:
 
     existing_titles = github_client.existing_discussion_titles(token)
 
+    fetch_failures = 0
+
     for cid in contest_ids:
         try:
             tasks = atcoder.fetch_tasks(cid)
         except Exception:
             logger.exception("Failed to fetch tasks for %s", cid)
+            fetch_failures += 1
             continue
 
         for task in tasks:
@@ -55,6 +62,12 @@ def run(token: str, contest_id: str | None = None) -> None:
 
             print(f"Created: {url}")
             existing_titles.add(title)
+
+    if fetch_failures == len(contest_ids):
+        raise RuntimeError(
+            f"Failed to fetch tasks for all {len(contest_ids)} contest(s) "
+            "attempted this run; see logged exceptions above for details."
+        )
 
 
 def main() -> None:
