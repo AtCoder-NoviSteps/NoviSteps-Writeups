@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import responses
+import pytest
 
 from contest_discussions.atcoder import fetch_tasks, find_recently_finished_abc_ids
 
@@ -104,3 +105,12 @@ def test_find_recently_finished_abc_ids_returns_empty_for_zero_limit():
     result = find_recently_finished_abc_ids(now=now, limit=0)
 
     assert result == []
+
+
+@responses.activate
+def test_find_recently_finished_abc_ids_rejects_naive_datetime():
+    contests = json.loads((FIXTURES_DIR / "contests_sample.json").read_text(encoding="utf-8"))
+    responses.get("https://kenkoooo.com/atcoder/resources/contests.json", json=contests)
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        find_recently_finished_abc_ids(now=datetime(2026, 7, 21), limit=3)

@@ -8,11 +8,12 @@ GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
 REQUEST_TIMEOUT_SECONDS = 10
 
 _EXISTING_TITLES_QUERY = """
-query($repositoryId: ID!, $categoryId: ID!) {
+query($repositoryId: ID!, $categoryId: ID!, $after: String) {
   node(id: $repositoryId) {
     ... on Repository {
-      discussions(categoryId: $categoryId, first: 100, orderBy: {field: CREATED_AT, direction: DESC}) {
+      discussions(categoryId: $categoryId, first: 100, after: $after, orderBy: {field: CREATED_AT, direction: DESC}) {
         nodes { title }
+        pageInfo { hasNextPage endCursor }
       }
     }
   }
@@ -34,22 +35,36 @@ mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) 
 
 
 def existing_discussion_titles(token: str) -> set[str]:
-    """Returns the titles of the most recent Discussions in the General category.
+    """Returns all Discussion titles in the General category.
 
-    Only the first 100 (no pagination) — accepted limitation given weekly ABC
-    volume; revisit if the General category ever accumulates enough non-contest
-    discussions to push older unposted contest titles out of this window.
+    Discussions are fetched in pages of 100 to ensure older titles are also
+    considered during backfills.
     Network/HTTP failures propagate as requests.RequestException (e.g.
     requests.HTTPError, requests.Timeout) — callers should catch that.
     """
-    data = _post_graphql(
-        token,
-        _EXISTING_TITLES_QUERY,
-        {"repositoryId": REPOSITORY_ID, "categoryId": GENERAL_CATEGORY_ID},
-    )
-    nodes = data["node"]["discussions"]["nodes"]
+    titles = set()
+    after = None
 
-    return {node["title"] for node in nodes}
+    while True:
+        data = _post_graphql(
+            token,
+            _EXISTING_TITLES_QUERY,
+            {
+                "repositoryId": REPOSITORY_ID,
+                "categoryId": GENERAL_CATEGORY_ID,
+                "after": after,
+            },
+        )
+        discussions = data["node"]["discussions"]
+        titles.update(node["title"] for node in discussions["nodes"])
+
+        page_info = discussions["pageInfo"]
+        if not page_info["hasNextPage"]:
+            return titles
+
+        after = page_info["endCursor"]
+        if after is None:
+            raise RuntimeError("GitHub GraphQL API returned no cursor for the next page")
 
 
 def create_discussion(token: str, title: str, body: str) -> str:

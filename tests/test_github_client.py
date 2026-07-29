@@ -18,7 +18,8 @@ def test_existing_discussion_titles_returns_titles():
                         "nodes": [
                             {"title": "ABC 467 A - Obesity"},
                             {"title": "ABC 467 B - Keep the Change"},
-                        ]
+                        ],
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
                     }
                 }
             }
@@ -28,6 +29,40 @@ def test_existing_discussion_titles_returns_titles():
     titles = existing_discussion_titles("fake-token")
 
     assert titles == {"ABC 467 A - Obesity", "ABC 467 B - Keep the Change"}
+
+
+@responses.activate
+def test_existing_discussion_titles_paginates_all_discussions():
+    responses.post(
+        GITHUB_GRAPHQL_URL,
+        json={
+            "data": {
+                "node": {
+                    "discussions": {
+                        "nodes": [{"title": "Old discussion"}],
+                        "pageInfo": {"hasNextPage": True, "endCursor": "cursor-1"},
+                    }
+                }
+            }
+        },
+    )
+    responses.post(
+        GITHUB_GRAPHQL_URL,
+        json={
+            "data": {
+                "node": {
+                    "discussions": {
+                        "nodes": [{"title": "Older discussion"}],
+                        "pageInfo": {"hasNextPage": False, "endCursor": "cursor-2"},
+                    }
+                }
+            }
+        },
+    )
+
+    titles = existing_discussion_titles("fake-token")
+
+    assert titles == {"Old discussion", "Older discussion"}
 
 
 @responses.activate

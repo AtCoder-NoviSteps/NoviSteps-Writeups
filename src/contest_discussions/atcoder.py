@@ -95,6 +95,8 @@ def find_recently_finished_abc_ids(
     """
     if now is None:
         now = datetime.now(timezone.utc)
+    elif now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("now must be timezone-aware")
 
     response = requests.get(CONTESTS_JSON_URL, timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
