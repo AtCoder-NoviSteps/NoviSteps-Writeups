@@ -4,6 +4,7 @@ for any problems that don't have one yet."""
 import argparse
 import logging
 import os
+import re
 
 from contest_discussions import atcoder, github_client
 from contest_discussions.constants import CONTESTS_TO_CHECK, DISCUSSION_BODY
@@ -24,8 +25,12 @@ def run(token: str, contest_id: str | None = None) -> None:
     Raises RuntimeError if every attempted contest failed to fetch, since that
     points to a systemic issue (e.g. AtCoder page structure changed) rather
     than a one-off, and must surface as a failed run instead of a silent
-    no-op success.
+    no-op success. Also raises RuntimeError if every attempted Discussion
+    creation failed.
     """
+    if contest_id is not None and re.fullmatch(r"abc\d+", contest_id) is None:
+        raise ValueError("contest_id must be lowercase abc followed by digits")
+
     contest_ids = (
         [contest_id]
         if contest_id
@@ -41,6 +46,8 @@ def run(token: str, contest_id: str | None = None) -> None:
     )
 
     fetch_failures = 0
+    creation_attempts = 0
+    creation_failures = 0
 
     for cid in contest_ids:
         try:
@@ -56,10 +63,12 @@ def run(token: str, contest_id: str | None = None) -> None:
             if title in existing_titles:
                 continue
 
+            creation_attempts += 1
             try:
                 url = github_client.create_discussion(token, title, DISCUSSION_BODY)
             except Exception:
                 logger.exception("Failed to create discussion for '%s'", title)
+                creation_failures += 1
                 continue
 
             print(f"Created: {url}")
@@ -69,6 +78,12 @@ def run(token: str, contest_id: str | None = None) -> None:
         raise RuntimeError(
             f"Failed to fetch tasks for all {len(contest_ids)} contest(s) "
             "attempted this run; see logged exceptions above for details."
+        )
+
+    if creation_attempts and creation_failures == creation_attempts:
+        raise RuntimeError(
+            f"Failed all {creation_failures} discussion creation attempt(s) this run; "
+            "see logged exceptions above for details."
         )
 
 

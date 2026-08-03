@@ -22,7 +22,7 @@ create a GitHub Discussion as part of this work.
   title may be outside the newest page.
 - Pin each third-party GitHub Action to the reviewed full commit SHA and retain
   the version as a comment.
-- Keep durable operational rationale in the existing automation plan: task
+- Keep durable operational rationale in `docs/contest-discussion-automation.md`: task
   data is deliberately scraped from AtCoder because Problems data can lag;
   `contests.json` is only used for contest discovery; a live E2E run remains
   pending explicit authorization.

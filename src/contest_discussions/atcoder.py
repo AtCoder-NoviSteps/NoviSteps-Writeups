@@ -24,6 +24,8 @@ def fetch_tasks(contest_id: str) -> list[dict[str, str]]:
     Network/HTTP failures propagate as requests.RequestException (e.g.
     requests.HTTPError, requests.Timeout) — callers should catch that.
     """
+    # Problems task data can lag by hours after a contest, so scrape AtCoder's
+    # per-contest tasks page directly instead of using the Problems API.
     url = f"https://atcoder.jp/contests/{contest_id}/tasks"
     response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()

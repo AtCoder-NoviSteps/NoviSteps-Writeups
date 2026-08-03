@@ -68,6 +68,31 @@ def test_run_continues_after_a_single_task_creation_failure(monkeypatch):
     assert created == ["ABC 467 B - Keep the Change"]
 
 
+def test_run_raises_when_every_discussion_creation_fails(monkeypatch):
+    monkeypatch.setattr(
+        main.atcoder, "find_recently_finished_abc_ids", lambda limit: ["abc467"]
+    )
+    monkeypatch.setattr(
+        main.atcoder,
+        "fetch_tasks",
+        lambda contest_id: [
+            {"id": "abc467_a", "contest_id": "abc467", "problem_index": "A", "name": "Obesity"},
+            {"id": "abc467_b", "contest_id": "abc467", "problem_index": "B", "name": "Keep the Change"},
+        ],
+    )
+    monkeypatch.setattr(
+        main.github_client, "existing_discussion_titles", lambda token, *, fetch_all=False: set()
+    )
+
+    def always_fails(token, title, body):
+        raise RuntimeError("API unavailable")
+
+    monkeypatch.setattr(main.github_client, "create_discussion", always_fails)
+
+    with pytest.raises(RuntimeError, match="all 2 discussion creation"):
+        main.run("fake-token")
+
+
 def test_run_continues_after_a_single_contest_fetch_failure(monkeypatch):
     monkeypatch.setattr(
         main.atcoder, "find_recently_finished_abc_ids", lambda limit: ["abc466", "abc467"]
@@ -139,6 +164,19 @@ def test_run_uses_explicit_contest_id_when_given(monkeypatch):
 
     assert called_with == ["abc468"]
     assert pagination_modes == [True]
+
+
+def test_run_rejects_non_abc_explicit_contest_id(monkeypatch):
+    monkeypatch.setattr(
+        main.github_client,
+        "existing_discussion_titles",
+        lambda token, *, fetch_all=False: (_ for _ in ()).throw(
+            AssertionError("should not be called")
+        ),
+    )
+
+    with pytest.raises(ValueError, match="abc followed by digits"):
+        main.run("fake-token", contest_id="arc200")
 
 
 def test_run_skips_duplicate_title_within_the_same_run(monkeypatch):

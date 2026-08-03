@@ -40,15 +40,20 @@ def test_existing_discussion_titles_paginates_when_fetch_all_is_requested():
 - [ ] **Step 2: Write the failing orchestration test**
 
 ```python
-def test_run_uses_full_discussion_pagination_for_manual_contest(mocker):
-    mock_titles = mocker.patch("contest_discussions.main.github_client.existing_discussion_titles")
-    run("token", contest_id="abc467")
-    mock_titles.assert_called_once_with("token", fetch_all=True)
+def test_run_uses_full_discussion_pagination_for_manual_contest(monkeypatch):
+    modes = []
+    monkeypatch.setattr(
+        main.github_client,
+        "existing_discussion_titles",
+        lambda token, *, fetch_all=False: modes.append(fetch_all) or set(),
+    )
+    main.run("token", contest_id="abc467")
+    assert modes == [True]
 ```
 
 - [ ] **Step 3: Run the focused tests and confirm they fail because `fetch_all` is unsupported**
 
-Run: `python -m pytest tests/test_github_client.py tests/test_main.py -q`
+Run: `uv run pytest tests/test_github_client.py tests/test_main.py -q`
 
 - [ ] **Step 4: Commit the failing tests**
 
@@ -93,7 +98,7 @@ existing_titles = github_client.existing_discussion_titles(
 
 - [ ] **Step 4: Run the focused tests and confirm they pass**
 
-Run: `python -m pytest tests/test_github_client.py tests/test_main.py -q`
+Run: `uv run pytest tests/test_github_client.py tests/test_main.py -q`
 
 - [ ] **Step 5: Commit the implementation**
 
@@ -109,7 +114,7 @@ git commit -m "fix: limit automatic discussion duplicate checks"
 
 - [ ] **Step 1: Run the full suite**
 
-Run: `python -m pytest -q`
+Run: `uv run pytest -q`
 
 - [ ] **Step 2: Inspect the final diff and status**
 
