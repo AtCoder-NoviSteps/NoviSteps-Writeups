@@ -36,7 +36,9 @@ def run(token: str, contest_id: str | None = None) -> None:
         print("No finished ABC contests found.")
         return
 
-    existing_titles = github_client.existing_discussion_titles(token)
+    existing_titles = github_client.existing_discussion_titles(
+        token, fetch_all=contest_id is not None
+    )
 
     fetch_failures = 0
 

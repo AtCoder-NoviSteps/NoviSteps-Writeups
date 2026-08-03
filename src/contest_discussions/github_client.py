@@ -34,11 +34,11 @@ mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) 
 """
 
 
-def existing_discussion_titles(token: str) -> set[str]:
-    """Returns all Discussion titles in the General category.
+def existing_discussion_titles(token: str, *, fetch_all: bool = False) -> set[str]:
+    """Returns General-category Discussion titles for duplicate checking.
 
-    Discussions are fetched in pages of 100 to ensure older titles are also
-    considered during backfills.
+    By default, returns the newest page of 100 titles for automatic runs.
+    Set ``fetch_all`` for manual backfills so older titles are also considered.
     Network/HTTP failures propagate as requests.RequestException (e.g.
     requests.HTTPError, requests.Timeout) — callers should catch that.
     """
@@ -59,7 +59,7 @@ def existing_discussion_titles(token: str) -> set[str]:
         titles.update(node["title"] for node in discussions["nodes"])
 
         page_info = discussions["pageInfo"]
-        if not page_info["hasNextPage"]:
+        if not fetch_all or not page_info["hasNextPage"]:
             return titles
 
         after = page_info["endCursor"]

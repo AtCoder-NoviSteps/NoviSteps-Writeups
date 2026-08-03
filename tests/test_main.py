@@ -23,7 +23,7 @@ def test_run_skips_tasks_that_already_have_a_discussion(monkeypatch):
     monkeypatch.setattr(
         main.github_client,
         "existing_discussion_titles",
-        lambda token: {"ABC 467 A - Obesity"},
+        lambda token, *, fetch_all=False: {"ABC 467 A - Obesity"},
     )
     created = []
     monkeypatch.setattr(
@@ -49,7 +49,9 @@ def test_run_continues_after_a_single_task_creation_failure(monkeypatch):
             {"id": "abc467_b", "contest_id": "abc467", "problem_index": "B", "name": "Keep the Change"},
         ],
     )
-    monkeypatch.setattr(main.github_client, "existing_discussion_titles", lambda token: set())
+    monkeypatch.setattr(
+        main.github_client, "existing_discussion_titles", lambda token, *, fetch_all=False: set()
+    )
 
     created = []
 
@@ -77,7 +79,9 @@ def test_run_continues_after_a_single_contest_fetch_failure(monkeypatch):
         return [{"id": "abc467_a", "contest_id": "abc467", "problem_index": "A", "name": "Obesity"}]
 
     monkeypatch.setattr(main.atcoder, "fetch_tasks", fake_fetch_tasks)
-    monkeypatch.setattr(main.github_client, "existing_discussion_titles", lambda token: set())
+    monkeypatch.setattr(
+        main.github_client, "existing_discussion_titles", lambda token, *, fetch_all=False: set()
+    )
 
     created = []
     monkeypatch.setattr(
@@ -102,7 +106,9 @@ def test_run_raises_when_every_contest_fails_to_fetch(monkeypatch):
         raise ValueError("no task table")
 
     monkeypatch.setattr(main.atcoder, "fetch_tasks", always_fails)
-    monkeypatch.setattr(main.github_client, "existing_discussion_titles", lambda token: set())
+    monkeypatch.setattr(
+        main.github_client, "existing_discussion_titles", lambda token, *, fetch_all=False: set()
+    )
 
     with pytest.raises(RuntimeError):
         main.run("fake-token")
@@ -110,6 +116,7 @@ def test_run_raises_when_every_contest_fails_to_fetch(monkeypatch):
 
 def test_run_uses_explicit_contest_id_when_given(monkeypatch):
     called_with = []
+    pagination_modes = []
     monkeypatch.setattr(
         main.atcoder,
         "find_recently_finished_abc_ids",
@@ -120,11 +127,18 @@ def test_run_uses_explicit_contest_id_when_given(monkeypatch):
         "fetch_tasks",
         lambda contest_id: called_with.append(contest_id) or [],
     )
-    monkeypatch.setattr(main.github_client, "existing_discussion_titles", lambda token: set())
+    def fake_existing_discussion_titles(token, *, fetch_all=False):
+        pagination_modes.append(fetch_all)
+        return set()
+
+    monkeypatch.setattr(
+        main.github_client, "existing_discussion_titles", fake_existing_discussion_titles
+    )
 
     main.run("fake-token", contest_id="abc468")
 
     assert called_with == ["abc468"]
+    assert pagination_modes == [True]
 
 
 def test_run_skips_duplicate_title_within_the_same_run(monkeypatch):
@@ -145,7 +159,9 @@ def test_run_skips_duplicate_title_within_the_same_run(monkeypatch):
         "fetch_tasks",
         lambda contest_id: [duplicated_task, duplicated_task],
     )
-    monkeypatch.setattr(main.github_client, "existing_discussion_titles", lambda token: set())
+    monkeypatch.setattr(
+        main.github_client, "existing_discussion_titles", lambda token, *, fetch_all=False: set()
+    )
 
     call_count = 0
 

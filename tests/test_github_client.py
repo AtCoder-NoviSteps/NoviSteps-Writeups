@@ -25,14 +25,48 @@ def test_existing_discussion_titles_returns_titles():
             }
         },
     )
-
     titles = existing_discussion_titles("fake-token")
 
     assert titles == {"ABC 467 A - Obesity", "ABC 467 B - Keep the Change"}
 
 
 @responses.activate
-def test_existing_discussion_titles_paginates_all_discussions():
+def test_existing_discussion_titles_returns_only_first_page_by_default():
+    responses.post(
+        GITHUB_GRAPHQL_URL,
+        json={
+            "data": {
+                "node": {
+                    "discussions": {
+                        "nodes": [{"title": "Newest discussion"}],
+                        "pageInfo": {"hasNextPage": True, "endCursor": "cursor-1"},
+                    }
+                }
+            }
+        },
+    )
+    responses.post(
+        GITHUB_GRAPHQL_URL,
+        json={
+            "data": {
+                "node": {
+                    "discussions": {
+                        "nodes": [{"title": "Older discussion"}],
+                        "pageInfo": {"hasNextPage": False, "endCursor": "cursor-2"},
+                    }
+                }
+            }
+        },
+    )
+
+    titles = existing_discussion_titles("fake-token")
+
+    assert titles == {"Newest discussion"}
+    assert len(responses.calls) == 1
+
+
+@responses.activate
+def test_existing_discussion_titles_paginates_when_fetch_all_is_requested():
     responses.post(
         GITHUB_GRAPHQL_URL,
         json={
@@ -60,7 +94,7 @@ def test_existing_discussion_titles_paginates_all_discussions():
         },
     )
 
-    titles = existing_discussion_titles("fake-token")
+    titles = existing_discussion_titles("fake-token", fetch_all=True)
 
     assert titles == {"Old discussion", "Older discussion"}
 
