@@ -33,5 +33,9 @@ Discussion も確認できるよう全ページを取得する。
 
 ## 実運用確認
 
-ローカルの HTTP モックテストは実行済み。実際の Discussion を作成する
-workflow_dispatch による E2E 実行は、明示的な承認を得てから行う。
+2026-08-08 に PR ブランチから `abc464` を直接実行し、Discussion #38〜#44
+の7件を作成した。同じ入力で再実行しても新規作成は発生せず、重複防止も確認した。
+これは AtCoder 取得・GitHub GraphQL 作成・重複防止の E2E である。
+
+GitHub Actions の `workflow_dispatch` による確認は、ワークフローファイルが
+`main` に入った後に実施する。
