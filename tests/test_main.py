@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 import pytest
 
 from contest_discussions import main
@@ -6,6 +9,18 @@ from contest_discussions import main
 def test_build_title_formats_correctly():
     task = {"problem_index": "F", "name": "Email Scheduling Optimization"}
     assert main.build_title("abc467", task) == "ABC 467 F - Email Scheduling Optimization"
+
+
+def test_package_module_can_be_invoked():
+    result = subprocess.run(
+        [sys.executable, "-m", "contest_discussions.main", "--help"],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "Post ABC contest discussions" in result.stdout
 
 
 def test_run_skips_tasks_that_already_have_a_discussion(monkeypatch):

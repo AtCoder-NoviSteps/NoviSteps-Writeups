@@ -9,6 +9,10 @@ dependencies = [
     "selectolax>=0.4.6",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",
