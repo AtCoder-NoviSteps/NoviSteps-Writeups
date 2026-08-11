@@ -1,0 +1,23 @@
+[project]
+name = "contest-discussions"
+version = "0.1.0"
+description = "Automatically create GitHub Discussions for each ABC problem after the contest ends."
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "requests>=2.32",
+    "selectolax>=0.4.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "responses>=0.25",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
